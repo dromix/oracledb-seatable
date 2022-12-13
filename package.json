@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "start:from_oracle": "node src/oracle-to-seatable.js",
+    "start:from_seatable": "node src/seatable-to-oracle.js"
   },
   "keywords": [],
   "author": "",
