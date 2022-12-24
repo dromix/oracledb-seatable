@@ -57,8 +57,36 @@ class SeaTable {
     return response.rows;
   }
 
+  async createSeaTable(tableData) {
+    const response = await this.#fetch({
+      path: `/dtable-server/api/v1/dtables/${this.#baseId}/tables/`,
+      method: "POST",
+      headers: {
+        authorization: `Token ${this.#baseToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(tableData),
+    });
+    return response;
+  }
+
+  async bulkInsert(rowsData) {
+    console.log("rows", rowsData);
+    const response = await this.#fetch({
+      path: `/dtable-server/api/v1/dtables/${this.#baseId}/batch-append-rows/`,
+      method: "POST",
+      headers: {
+        authorization: `Token ${this.#baseToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(rowsData),
+    });
+    return response;
+  }
+
   async #fetch(options) {
     const { statusCode, headers, body } = await this.client.request(options);
+    console.log("statusCode", statusCode);
 
     return body.json();
   }

@@ -3,6 +3,20 @@ const { config } = require("../config");
 
 oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 
+function toLowerKeys(obj) {
+  return Object.keys(obj).reduce((accumulator, key) => {
+    const newKey = key.toLowerCase();
+    const key_ = newKey.endsWith("_") ? newKey.slice(0, -1) : newKey;
+
+    const isFile = obj[key]?.toString()?.includes(`"type":"file"`);
+    if (isFile) {
+      console.log("file", isFile, obj);
+    }
+    accumulator[key_] = isFile ? [JSON.parse(obj[key])] : obj[key];
+    return accumulator;
+  }, {});
+}
+
 class Oracle {
   connection;
 
@@ -26,10 +40,10 @@ class Oracle {
     const types = {
       number: "NUMBER",
       "auto-number": "NUMBER",
-      file: "BLOB",
+      file: "VARCHAR2",
       text: "VARCHAR2",
       "multiple-select": "VARCHAR2",
-      date: "DATE",
+      date: "VARCHAR2",
     };
 
     const typesWithoutLength = ["DATE", "BLOB"];
@@ -73,44 +87,66 @@ class Oracle {
     const rows = [];
     tableData.data.forEach((row) => {
       const rowData = Object.keys(tableData.metadata).map((metaKey) => {
-        const data =
-          typeof row[metaKey] === "string" ? `'${row[metaKey]}'` : row[metaKey];
+        const data = typeof row[metaKey] === "object" ? null : row[metaKey];
+        // typeof row[metaKey] === "string" ? `'${row[metaKey]}'` : row[metaKey];
         return data || null;
       });
 
-      let str = "";
-      for (let i = 0; i < rowData.length; i++) {
-        str += `${rowData[i]},`;
-      }
-      const newStr = str.slice(0, -1);
-      rows.push(newStr);
+      // let str = "";
+      // for (let i = 0; i < rowData.length; i++) {
+      //   str += `${rowData[i]},`;
+      // }
+      // const newStr = str.slice(0, -1);
+      rows.push(rowData);
     });
-
-    // rows[0] = rows[0].replace("union all ", "");
-    const selects = [];
-    rows.forEach((row) => {
-      const select = `SELECT ${row} FROM dual UNION ALL `;
-      selects.push(select);
-    });
-
-    selects[selects.length - 1] = selects.at(-1).replace(/union all /gi, "");
-
-    console.log("#### INSERT TABLE " + tableName + " #######");
-    const query = `INSERT INTO ${tableName} (${columns})
-    WITH p AS (
-      ${selects.join(" ")}
+    console.log("rows", rows);
+    const sql = `insert into ${tableName} (${columns}) values(${new Array(
+      columns.length
     )
-    SELECT * FROM p
-    `;
-    console.log(query);
-
-    const result = await this.execute(query);
+      .fill(0)
+      .map((_, index) => `:${index + 1}`)
+      .join(" ")})`;
+    const result = await this.connection.executeMany(sql, rows);
     console.log(result);
     await this.connection.commit();
   }
 
   async execute(query) {
     return this.connection.execute(query);
+  }
+
+  async getOracleTableMetadata(tableName) {
+    const isAnotherUserTable = tableName.includes(".");
+    const [owner, table] = tableName.split(".");
+
+    const sql = `
+      select lower(column_name) column_name, data_type type
+      from all_tab_columns
+      where
+      ${
+        isAnotherUserTable
+          ? `TABLE_NAME = upper('${table}') AND owner = upper('${owner}')`
+          : `TABLE_NAME = upper('${tableName}')`
+      }
+    `;
+    console.log("sql", sql);
+    const response = await this.execute(sql);
+    console.log("response", response);
+    const data = response.rows.map((row) => toLowerKeys(row));
+    console.log("data", data);
+
+    return data.map((row) => ({
+      ...row,
+      column_name: row.column_name.endsWith("_")
+        ? row.column_name.slice(0, -1)
+        : row.column_name,
+    }));
+  }
+
+  async getRows(query) {
+    const response = await this.execute(query);
+    const rows = response.rows.map((row) => toLowerKeys(row));
+    return rows;
   }
 }
 

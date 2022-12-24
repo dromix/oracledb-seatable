@@ -37,6 +37,11 @@ class OracleSeaTable {
               ? row[column].join(" ")
               : row[column];
 
+          newRow[columnData.cyrillicName] =
+            columnData.type === "file"
+              ? JSON.stringify(row[column][0])
+              : row[column];
+
           if (
             result.metadata[columnData.cyrillicName].maxLength <
             getValueLength(newRow[columnData.cyrillicName])
@@ -50,6 +55,35 @@ class OracleSeaTable {
       result.data.push(newRow);
     }
 
+    return result;
+  }
+
+  async createSeaTable(tableName, tableMetadata) {
+    const typeMapper = {
+      NUMBER: "number",
+      VARCHAR2: "text",
+      CHAR: "text",
+      DATE: "text", //date
+    };
+
+    const tableData = {
+      table_name: tableName,
+      columns: tableMetadata.map((column) => ({
+        column_name: column.column_name,
+        column_type: column.column_name.includes("file")
+          ? "file"
+          : typeMapper[column.type] || "text",
+        column_data: null,
+      })),
+    };
+
+    console.log(tableData);
+    return this.seaTable.createSeaTable(tableData);
+  }
+
+  async insertTable(tableName, rows) {
+    const data = { rows, table_name: tableName };
+    const result = await this.seaTable.bulkInsert(data);
     return result;
   }
 }
