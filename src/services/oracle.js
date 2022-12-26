@@ -115,7 +115,7 @@ class Oracle {
     return this.connection.execute(query);
   }
 
-  async getOracleTableMetadata(tableName) {
+  async getOracleTableMetadata(tableName, columns) {
     const isAnotherUserTable = tableName.includes(".");
     const [owner, table] = tableName.split(".");
 
@@ -135,12 +135,14 @@ class Oracle {
     const data = response.rows.map((row) => toLowerKeys(row));
     console.log("data", data);
 
-    return data.map((row) => ({
-      ...row,
-      column_name: row.column_name.endsWith("_")
-        ? row.column_name.slice(0, -1)
-        : row.column_name,
-    }));
+    return data
+      .map((row) => ({
+        ...row,
+        column_name: row.column_name.endsWith("_")
+          ? row.column_name.slice(0, -1)
+          : row.column_name,
+      }))
+      .filter((column) => columns.includes(column.column_name));
   }
 
   async getRows(query) {
