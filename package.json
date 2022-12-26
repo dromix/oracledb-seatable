@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "prestart:from_oracle": "dotenv-checker --schema .env.example --env .env",
     "start:from_oracle": "node src/oracle-to-seatable.js",
+    "prestart:from_seatable": "dotenv-checker --schema .env.example --env .env",
     "start:from_seatable": "node src/seatable-to-oracle.js"
   },
   "keywords": [],
@@ -16,5 +18,8 @@
     "dotenv": "^16.0.3",
     "oracledb": "^5.5.0",
     "undici": "^5.14.0"
+  },
+  "devDependencies": {
+    "dotenv-checker": "^1.1.5"
   }
 }
